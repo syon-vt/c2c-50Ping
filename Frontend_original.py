@@ -1,20 +1,17 @@
 import sys
 import os
 import threading
-import atexit  # Import atexit for cleanup
-import keyboard  # pip install keyboard
+import atexit
+import keyboard
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QHBoxLayout, QVBoxLayout, QTextEdit, QPushButton,
     QFileDialog, QLabel, QSizePolicy, QGraphicsDropShadowEffect
 )
-# --- CHANGE: Import QObject and pyqtSignal for thread-safe communication
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, pyqtProperty, QTimer, QObject, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter, QPen, QPixmap
 
 TEMP_SCREENSHOT = os.path.join(os.path.expanduser("~"), "screenshot_temp.png")
 
-
-# --- Screen Flash Effect (No changes needed) ---
 class ScreenFlash(QWidget):
     def __init__(self, duration=400, parent=None):
         super().__init__(parent)
@@ -33,8 +30,6 @@ class ScreenFlash(QWidget):
         self.show()
         self.anim.start()
 
-
-# --- Pop-out Screenshot Preview ---
 class ThumbnailPopup(QWidget):
     def __init__(self, pixmap: QPixmap, duration=5000):
         super().__init__()
@@ -58,8 +53,7 @@ class ThumbnailPopup(QWidget):
         shadow.setOffset(0, 0)
         shadow.setColor(QColor(0, 0, 0, 180))
         self.setGraphicsEffect(shadow)
-
-        # --- CHANGE: Use availableGeometry to avoid taskbars/docks
+        
         screen = QApplication.primaryScreen().availableGeometry()
         margin = 20
         self.move(screen.width() - self.width() - margin,
@@ -89,8 +83,6 @@ class ThumbnailPopup(QWidget):
         anim.start()
         self._anim = anim
 
-
-# --- Hover Icon Widget (No changes needed) ---
 class IconWithHoverLabel(QWidget):
     def __init__(self, icon_text, label_text, click_handler=None):
         super().__init__()
@@ -123,8 +115,6 @@ class IconWithHoverLabel(QWidget):
         self.label.hide()
         super().leaveEvent(event)
 
-
-# --- Main Input Widget (No changes needed) ---
 class AnimatedBorderWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -241,8 +231,6 @@ class AnimatedBorderWidget(QWidget):
         else:
             super().keyPressEvent(event)
 
-
-# --- Property for rainbow border animation (No changes needed) ---
 def get_border_color(self):
     return self.border_color
 def set_border_color(self, color):
@@ -250,15 +238,12 @@ def set_border_color(self, color):
 AnimatedBorderWidget.borderColor = pyqtProperty(QColor, fget=get_border_color, fset=set_border_color)
 
 
-# --- CHANGE: Create a dedicated QObject for emitting signals from the worker thread ---
 class HotkeyEmitter(QObject):
     show_widget_signal = pyqtSignal()
 
-# --- Main program ---
 def main():
     app = QApplication(sys.argv)
 
-    # --- CHANGE: Register a function to clean up the temp file on exit
     atexit.register(lambda: os.remove(TEMP_SCREENSHOT) if os.path.exists(TEMP_SCREENSHOT) else None)
 
     widget = AnimatedBorderWidget()
@@ -270,8 +255,6 @@ def main():
     final_y = 50
     start_y = -widget.height()
     widget.move(x, start_y)
-
-    # Rainbow border animation logic (unchanged)
     rainbow_colors = [
         QColor(255, 179, 186), QColor(255, 223, 186), QColor(255, 255, 186),
         QColor(186, 255, 201), QColor(186, 225, 255), QColor(201, 186, 255),
@@ -297,8 +280,7 @@ def main():
         widget._anim = anim
     
     animate()
-
-    # Function to show widget (unchanged)
+    
     def show_widget():
         if widget.isVisible():
             return
@@ -317,20 +299,13 @@ def main():
         fade_anim.setEndValue(1.0)
         fade_anim.start()
         widget._fade_anim = fade_anim
-
-    # --- CHANGE: Refactored hotkey listener to use signals and slots ---
-    # 1. The listener function now takes an emitter object
+        
     def hotkey_listener(emitter: HotkeyEmitter):
-        # When hotkey is pressed, emit the signal instead of calling the function directly
         keyboard.add_hotkey('`', lambda: emitter.show_widget_signal.emit())
         keyboard.wait()
 
-    # 2. Create an instance of our emitter
     emitter = HotkeyEmitter()
-    # 3. Connect the signal from the emitter to the show_widget slot (function)
     emitter.show_widget_signal.connect(show_widget)
-
-    # 4. Start the thread, passing the emitter instance to it
     thread = threading.Thread(target=hotkey_listener, args=(emitter,), daemon=True)
     thread.start()
     
@@ -338,4 +313,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()
