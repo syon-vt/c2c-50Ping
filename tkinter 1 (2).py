@@ -372,8 +372,10 @@ def main():
 
     thread = threading.Thread(target=hotkey_listener, args=(emitter,), daemon=True)
     thread.start()
+    
     sys.exit(app.exec())
 
 
 if __name__ == "__main__":
     main()
+
